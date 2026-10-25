@@ -1,0 +1,32 @@
+# Build output and local IDE state
+**/bin/
+**/obj/
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+.DS_Store
+artifacts/
+TestResults/
+*.trx
+
+# Local diagnostic experiments; not part of the supported WinUI app
+ToastMonitor.Blank/
+ToastMonitor.BlankFD/
+ToastMonitor.WinUI.Msix/
+icon-staging/
+msix-out/
+graphify-out/
+
+# Never publish local account or usage data
+.env
+.env.*
+*.pfx
+*.p12
+*.key
+*.db
+*.db-wal
+*.db-shm
+credentials
+settings.json
