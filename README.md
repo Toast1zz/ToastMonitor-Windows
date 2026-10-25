@@ -51,7 +51,7 @@ Local tools must have produced logs on this Windows user profile before usage ca
 
 ## Build
 
-Use Windows with the .NET 8 SDK and access to NuGet. Run from the repository root in PowerShell:
+Use Windows with the .NET 8 SDK and access to NuGet. Keep the checkout path short, for example `C:\src\ToastMonitor-Windows`: Windows App SDK build tools can fail when generated file paths exceed the Windows path limit. Run from the repository root in PowerShell:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build-winui.ps1 -Architecture x64
