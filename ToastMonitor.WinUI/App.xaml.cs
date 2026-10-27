@@ -66,12 +66,14 @@ public partial class App : Application
                 _tray?.ShowBalloon(title, body,
                     transition != ToastMonitor.Collect.QuotaAlertPolicy.Transition.Recovered);
             _state.StartEngine();
-            _state.ScanCompleted += _ => _queue?.TryEnqueue(async () =>
+            _state.ScanCompleted += receipt => _queue?.TryEnqueue(async () =>
             {
                 if (IsExiting) return;
                 await RefreshTrayAsync();
                 if (IsExiting) return;
-                if (_dashboard is not null) await _dashboard.RefreshIfVisibleAsync();
+                // Some sources report existing sessions on every scan even when usage is unchanged.
+                if (_dashboard is not null && receipt.Turns > 0)
+                    await _dashboard.RefreshIfVisibleAsync();
                 if (_popover is not null && _popover.IsVisible && _popoverVm is not null)
                     await _popoverVm.RefreshAsync();
             });

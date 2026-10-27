@@ -5,6 +5,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 {
     private readonly AppState _state;
     private bool _isRefreshing;
+    private bool _refreshInProgress;
 
     public MainWindowViewModel(AppState state)
     {
@@ -22,11 +23,13 @@ public sealed class MainWindowViewModel : ViewModelBase
     public UsageAnalysisViewModel Analysis { get; }
     public PerformanceViewModel Performance { get; }
     public bool IsRefreshing { get => _isRefreshing; private set => Set(ref _isRefreshing, value); }
+    public bool RefreshInProgress => _refreshInProgress;
 
-    public async Task RefreshAllAsync()
+    public async Task RefreshAllAsync(bool showIndicator = true)
     {
-        if (IsRefreshing) return;
-        IsRefreshing = true;
+        if (_refreshInProgress) return;
+        _refreshInProgress = true;
+        if (showIndicator) IsRefreshing = true;
         try
         {
             await Overview.RefreshAsync();
@@ -35,6 +38,10 @@ public sealed class MainWindowViewModel : ViewModelBase
             await Analysis.RefreshAsync();
             await Performance.RefreshAsync();
         }
-        finally { IsRefreshing = false; }
+        finally
+        {
+            if (showIndicator) IsRefreshing = false;
+            _refreshInProgress = false;
+        }
     }
 }

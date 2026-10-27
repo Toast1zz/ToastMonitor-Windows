@@ -70,18 +70,18 @@ public sealed partial class DashboardWindow : Window
         if (_loaded) _ = RefreshAsync();
     }
 
-    public Task RefreshIfVisibleAsync() => Application.Current is not App { IsExiting: true } && AppWindow.IsVisible && _loaded ? RefreshAsync() : Task.CompletedTask;
+    public Task RefreshIfVisibleAsync() => Application.Current is not App { IsExiting: true } && AppWindow.IsVisible && _loaded ? RefreshAsync(showIndicator: false) : Task.CompletedTask;
 
-    private async Task RefreshAsync()
+    private async Task RefreshAsync(bool showIndicator = true)
     {
         if (Application.Current is App { IsExiting: true }) return;
-        if (_vm.IsRefreshing) { _refreshPending = true; return; }
+        if (_vm.RefreshInProgress) { _refreshPending = true; return; }
         try
         {
             do
             {
                 _refreshPending = false;
-                await _vm.RefreshAllAsync();
+                await _vm.RefreshAllAsync(showIndicator);
             } while (_refreshPending);
             RefreshError.IsOpen = false;
         }
@@ -107,8 +107,8 @@ public sealed partial class DashboardWindow : Window
         if (PageTitle is null) return;
         if (args.IsSettingsSelected)
         {
-            (Application.Current as App)?.ShowSettings();
             Navigation.SelectedItem = _selectedPage ?? OverviewNav;
+            (Application.Current as App)?.ShowSettings();
             return;
         }
         if (args.SelectedItem is not NavigationViewItem item) return;
