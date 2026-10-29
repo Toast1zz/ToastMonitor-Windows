@@ -71,14 +71,14 @@ public sealed class OverviewViewModel : ViewModelBase
     {
         var snap = await _state.Queries.LoadFullAsync(_state.Settings.PeriodConfiguration);
         Snapshot = snap;
-        ByTool = Filter.Slot switch
+        var byTool = Filter.Slot switch
         {
             UsagePeriodSlot.Today => snap.Light.ByToolToday,
             UsagePeriodSlot.Month => snap.Light.ByToolMonth,
             UsagePeriodSlot.All => snap.Light.ByToolAll,
             _ => snap.Light.ByToolWeek,
         };
-        Models = Filter.Slot switch
+        var models = Filter.Slot switch
         {
             UsagePeriodSlot.Today => snap.ModelAggsToday,
             UsagePeriodSlot.Month => snap.ModelAggsMonth,
@@ -87,20 +87,31 @@ public sealed class OverviewViewModel : ViewModelBase
         };
         if (Filter.Tool is not null)
         {
-            ByTool = ByTool.Where(r => r.Tool == Filter.Tool).ToList();
-            Models = Models.Where(m => m.Tool == Filter.Tool).ToList();
+            byTool = byTool.Where(r => r.Tool == Filter.Tool).ToList();
+            models = models.Where(m => m.Tool == Filter.Tool).ToList();
         }
+        var toolSharesChanged = !_byTool.SequenceEqual(byTool);
+        var modelSharesChanged = !_models.SequenceEqual(models);
+        if (toolSharesChanged) ByTool = byTool;
+        if (modelSharesChanged) Models = models;
         // Fill actual calendar dates, including zero-use days. Taking the last
         // 30 database rows would include old activity and skip empty days.
         var today = DateTime.Today;
         var days = Enumerable.Range(0, 30).Select(i => today.AddDays(i - 29))
             .Select(d => (long)(d.Year * 10000 + d.Month * 100 + d.Day)).ToList();
         var max = days.Select(d => snap.Heatmap.GetValueOrDefault(d)).DefaultIfEmpty(0).Max();
-        DailyBars = days.Select(d => new DayBar(d, snap.Heatmap.GetValueOrDefault(d),
+        var dailyBars = days.Select(d => new DayBar(d, snap.Heatmap.GetValueOrDefault(d),
             snap.HeatmapCost.GetValueOrDefault(d), max == 0 ? 0 : snap.Heatmap.GetValueOrDefault(d) * 100.0 / max)).ToList();
-        foreach (var name in new[] { nameof(ToolShares), nameof(ModelShares), nameof(TokensText), nameof(CallsText),
-            nameof(CostText), nameof(ApiValueText), nameof(PeriodLabel), nameof(WeekLabel), nameof(MonthLabel),
-            nameof(HasAnyData), nameof(ScanStatus), nameof(ActivitySummary), nameof(ActivityStart) }) Raise(name);
+        if (!_dailyBars.SequenceEqual(dailyBars))
+        {
+            DailyBars = dailyBars;
+            Raise(nameof(ActivitySummary));
+        }
+        if (toolSharesChanged) Raise(nameof(ToolShares));
+        if (modelSharesChanged) Raise(nameof(ModelShares));
+        foreach (var name in new[] { nameof(TokensText), nameof(CallsText), nameof(CostText),
+            nameof(ApiValueText), nameof(PeriodLabel), nameof(WeekLabel), nameof(MonthLabel),
+            nameof(HasAnyData), nameof(ScanStatus), nameof(ActivityStart) }) Raise(name);
     }
 }
 

@@ -157,6 +157,42 @@ public sealed class ViewModelTests : IDisposable
     }
 
     [Fact]
+    public void Settings_AddMonthlySubscription_PersistsAndRefreshesList()
+    {
+        using var state = new AppState(_db, new QuotaService(new InMemoryCredentialProvider()));
+        var vm = new SettingsViewModel(state)
+        {
+            NewSubName = "ChatGPT Plus",
+            NewSubPrice = "20",
+        };
+
+        Assert.True(vm.AddSubscriptionFromFields());
+        var subscription = Assert.Single(vm.Subscriptions);
+        Assert.Equal("ChatGPT Plus", subscription.Name);
+        Assert.Equal("monthly", subscription.Cycle);
+        Assert.Equal(20, subscription.Price);
+        Assert.InRange(subscription.StartDate, Now - 5, Now + 5);
+        Assert.Single(_db.GetSubscriptions());
+    }
+
+    [Fact]
+    public async Task Overview_UnchangedSnapshot_DoesNotRebuildBars()
+    {
+        SeedTurns();
+        using var state = new AppState(_db, new QuotaService(new InMemoryCredentialProvider()));
+        var vm = new OverviewViewModel(state);
+        await vm.RefreshAsync();
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        await vm.RefreshAsync();
+
+        Assert.DoesNotContain(nameof(OverviewViewModel.ToolShares), changed);
+        Assert.DoesNotContain(nameof(OverviewViewModel.ModelShares), changed);
+        Assert.DoesNotContain(nameof(OverviewViewModel.DailyBars), changed);
+    }
+
+    [Fact]
     public void HealthHub_Stale_And_Error_Rules()
     {
         var hub = new SourceHealthHub();

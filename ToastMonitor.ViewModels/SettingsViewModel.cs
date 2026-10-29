@@ -117,7 +117,8 @@ public sealed class SettingsViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(NewSubName)) return false;
         if (!double.TryParse(NewSubPrice, System.Globalization.NumberStyles.Any,
             System.Globalization.CultureInfo.InvariantCulture, out var price)) return false;
-        var ok = _state.Database.UpsertSubscription(new Subscription(0, NewSubName.Trim(), "", 0, 0, "monthly", price, "USD"));
+        var ok = _state.Database.UpsertSubscription(new Subscription(0, NewSubName.Trim(), "",
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(), 0, "monthly", price, "USD"));
         if (ok) { Subscriptions = _state.Database.GetSubscriptions(); NewSubName = ""; NewSubPrice = ""; }
         return ok;
     }

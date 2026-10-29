@@ -1,6 +1,7 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using System.Runtime.InteropServices;
 using ToastMonitor.Core;
 using ToastMonitor.ViewModels;
 using Windows.Graphics;
@@ -18,6 +19,17 @@ public sealed partial class SettingsWindow : Window
 {
     private readonly SettingsViewModel _vm;
     private Subscription? _selectedSub;
+    private static readonly IntPtr HwndTopmost = new(-1);
+    private static readonly IntPtr HwndNotTopmost = new(-2);
+    private const uint SwpNoMoveOrSize = 0x0001 | 0x0002;
+    private int _subscriptionFeedbackVersion;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+        int x, int y, int width, int height, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     public SettingsWindow(AppState state)
     {
@@ -42,7 +54,19 @@ public sealed partial class SettingsWindow : Window
         if (presenter is not null && presenter.State == OverlappedPresenterState.Minimized)
             presenter.Restore();
         AppWindow.Show();
-        Activate();
+        SubscriptionFeedback.IsOpen = false;
+        _subscriptionFeedbackVersion++;
+        // NavigationView may restore focus to the dashboard after this call.
+        // Raise settings after that click event has completed.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!AppWindow.IsVisible) return;
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            SetWindowPos(hwnd, HwndTopmost, 0, 0, 0, 0, SwpNoMoveOrSize);
+            SetWindowPos(hwnd, HwndNotTopmost, 0, 0, 0, 0, SwpNoMoveOrSize);
+            SetForegroundWindow(hwnd);
+            Activate();
+        });
     }
 
     public void SelectTab(int tab) => SettingsTabs.SelectedIndex = tab;
@@ -141,7 +165,20 @@ public sealed partial class SettingsWindow : Window
         if (result == ContentDialogResult.Primary) _vm.ClearAllData();
     }
 
-    private void AddSub_Click(object sender, RoutedEventArgs e) => _vm.AddSubscriptionFromFields();
+    private async void AddSub_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.NewSubName = SubscriptionNameBox.Text;
+        _vm.NewSubPrice = SubscriptionPriceBox.Text;
+        var added = _vm.AddSubscriptionFromFields();
+        SubscriptionFeedback.Severity = added ? InfoBarSeverity.Success : InfoBarSeverity.Error;
+        SubscriptionFeedback.Message = added ? "订阅已添加。" : "添加失败，请检查名称和月费（USD）。";
+        SubscriptionFeedback.IsOpen = true;
+        var feedbackVersion = ++_subscriptionFeedbackVersion;
+        if (!added) return;
+        await Task.Delay(TimeSpan.FromSeconds(4));
+        if (feedbackVersion == _subscriptionFeedbackVersion)
+            SubscriptionFeedback.IsOpen = false;
+    }
 
     private void Subscription_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

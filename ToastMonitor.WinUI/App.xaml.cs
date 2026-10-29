@@ -71,7 +71,10 @@ public partial class App : Application
                 if (IsExiting) return;
                 await RefreshTrayAsync();
                 if (IsExiting) return;
-                if (_dashboard is not null) await _dashboard.RefreshIfVisibleAsync();
+                // Keep every dashboard page current (including Plans and the day rollover).
+                // Overview avoids rebuilding unchanged bars during this silent refresh.
+                if (_dashboard is not null)
+                    await _dashboard.RefreshIfVisibleAsync();
                 if (_popover is not null && _popover.IsVisible && _popoverVm is not null)
                     await _popoverVm.RefreshAsync();
             });
